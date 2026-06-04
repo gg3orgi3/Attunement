@@ -1,0 +1,986 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Attunement — Critical Report</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Roboto:ital,wght@0,300;0,400;1,300;1,400&family=Roboto+Mono:wght@300;400&family=Cormorant+Garamond:ital,wght@0,300;0,400;1,300;1,400&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --black: #060810;
+    --deep: #080d1a;
+    --navy: #0a1628;
+    --water: #0d2040;
+    --surface: #102444;
+    --mist: #162e52;
+    --silver: #8fa8c8;
+    --pale: #b8cfe8;
+    --light: #ddeaf8;
+    --white: #f0f5fc;
+    --glow: rgba(100, 160, 220, 0.08);
+    --glow-strong: rgba(100, 160, 220, 0.15);
+    --accent: #4a90d9;
+    --accent-dim: rgba(74, 144, 217, 0.3);
+    --cyber: #00ff9d;
+    --cyber-dim: rgba(0, 255, 157, 0.15);
+    --cyber-faint: rgba(0, 255, 157, 0.06);
+  }
+
+  *, *::before, *::after { margin: 0; padding: 0; box-sizing: border-box; }
+
+  html { scroll-behavior: smooth; }
+
+  body {
+    background: var(--black);
+    color: var(--light);
+    font-family: 'Roboto', sans-serif;
+    font-size: 17px;
+    line-height: 1.85;
+    font-weight: 300;
+    overflow-x: hidden;
+    cursor: none;
+  }
+
+  .cursor {
+    position: fixed;
+    width: 10px;
+    height: 10px;
+    background: var(--accent);
+    border-radius: 50%;
+    pointer-events: none;
+    z-index: 9999;
+    transform: translate(-50%, -50%);
+    transition: transform 0.08s ease, width 0.3s ease, height 0.3s ease;
+    mix-blend-mode: screen;
+    box-shadow: 0 0 20px rgba(74, 144, 217, 0.9), 0 0 40px rgba(74, 144, 217, 0.5), 0 0 80px rgba(74, 144, 217, 0.2);
+  }
+
+  .cursor-ring {
+    position: fixed;
+    width: 52px;
+    height: 52px;
+    border: 1.5px solid rgba(74, 144, 217, 0.6);
+    border-radius: 50%;
+    pointer-events: none;
+    z-index: 9998;
+    transform: translate(-50%, -50%);
+    transition: transform 0.18s ease, width 0.4s ease, height 0.4s ease, opacity 0.3s ease, border-color 0.3s ease;
+    box-shadow: 0 0 20px rgba(74, 144, 217, 0.15), inset 0 0 20px rgba(74, 144, 217, 0.05);
+  }
+
+  .cursor-ring-2 {
+    position: fixed;
+    width: 90px;
+    height: 90px;
+    border: 1px solid rgba(74, 144, 217, 0.2);
+    border-radius: 50%;
+    pointer-events: none;
+    z-index: 9997;
+    transform: translate(-50%, -50%);
+  }
+
+  #water-canvas {
+    position: fixed;
+    top: 0; left: 0;
+    width: 100%; height: 100%;
+    z-index: 0;
+    opacity: 0.35;
+    pointer-events: none;
+  }
+
+  body::before {
+    content: '';
+    position: fixed;
+    inset: 0;
+    background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 256 256' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='noise'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23noise)' opacity='0.04'/%3E%3C/svg%3E");
+    z-index: 1;
+    pointer-events: none;
+    opacity: 0.6;
+  }
+
+  body::after {
+    content: '';
+    position: fixed;
+    inset: 0;
+    background: repeating-linear-gradient(
+      to bottom,
+      transparent 0px,
+      transparent 3px,
+      rgba(0, 0, 0, 0.03) 3px,
+      rgba(0, 0, 0, 0.03) 4px
+    );
+    z-index: 3;
+    pointer-events: none;
+    opacity: 0.8;
+  }
+
+  .data-readout {
+    position: fixed;
+    bottom: 32px;
+    right: 40px;
+    z-index: 100;
+    display: flex;
+    flex-direction: column;
+    align-items: flex-end;
+    gap: 4px;
+    pointer-events: none;
+  }
+
+  .data-readout span {
+    font-family: 'Roboto Mono', monospace;
+    font-size: 9px;
+    letter-spacing: 0.12em;
+    color: var(--cyber);
+    opacity: 0.4;
+    text-transform: uppercase;
+  }
+
+  .active-glow {
+    color: var(--cyber);
+    opacity: 1;
+    text-shadow: 0 0 8px rgba(0, 255, 157, 0.9), 0 0 20px rgba(0, 255, 157, 0.5), 0 0 40px rgba(0, 255, 157, 0.2);
+    animation: dataFlicker 3s ease-in-out infinite;
+  }
+
+  @keyframes dataFlicker {
+    0%, 90%, 100% { opacity: 0.7; }
+    92% { opacity: 0.2; }
+    94% { opacity: 0.7; }
+    96% { opacity: 0.3; }
+    98% { opacity: 0.7; }
+  }
+
+  .hero-title {
+    transition: text-shadow 0.4s ease;
+  }
+
+  .hero-title:hover {
+    text-shadow:
+      0 0 20px rgba(0, 255, 157, 0.6),
+      0 0 40px rgba(74, 144, 217, 0.8),
+      0 0 80px rgba(74, 144, 217, 0.5),
+      0 0 140px rgba(74, 144, 217, 0.3),
+      0 0 220px rgba(74, 144, 217, 0.15);
+  }
+
+  .section-label::before {
+    content: '//';
+    color: var(--cyber);
+    opacity: 0.6;
+    font-family: 'Roboto Mono', monospace;
+    font-size: 9px;
+    letter-spacing: 0.1em;
+    margin-right: 4px;
+  }
+
+  cite {
+    font-style: normal;
+    color: var(--cyber);
+    opacity: 0.55;
+    font-family: 'Roboto Mono', monospace;
+    font-size: 0.85em;
+  }
+
+  blockquote footer {
+    font-family: 'Roboto Mono', monospace;
+    font-size: 10px;
+    letter-spacing: 0.15em;
+    color: var(--cyber);
+    opacity: 0.5;
+    text-transform: uppercase;
+  }
+
+  .nav-title::before {
+    content: '> ';
+    color: var(--cyber);
+    opacity: 0.7;
+  }
+
+  .page {
+    position: relative;
+    z-index: 2;
+    max-width: 760px;
+    margin: 0 auto;
+    padding: 0 40px;
+  }
+
+  nav {
+    position: fixed;
+    top: 0; left: 0; right: 0;
+    z-index: 100;
+    padding: 28px 40px;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    background: linear-gradient(to bottom, rgba(6,8,16,0.95) 0%, transparent 100%);
+  }
+
+  .nav-title {
+    font-family: 'Roboto Mono', monospace;
+    font-size: 11px;
+    letter-spacing: 0.18em;
+    color: var(--silver);
+    text-transform: uppercase;
+    opacity: 0.7;
+  }
+
+  .nav-links {
+    display: flex;
+    gap: 32px;
+    list-style: none;
+  }
+
+  .nav-links a {
+    font-family: 'Roboto Mono', monospace;
+    font-size: 10px;
+    letter-spacing: 0.15em;
+    color: var(--silver);
+    text-decoration: none;
+    text-transform: uppercase;
+    opacity: 0.5;
+    transition: opacity 0.3s ease;
+  }
+
+  .nav-links a:hover { opacity: 1; }
+
+  .hero {
+    min-height: 100vh;
+    display: flex;
+    flex-direction: column;
+    justify-content: flex-end;
+    padding-bottom: 100px;
+    padding-top: 120px;
+  }
+
+  .hero-label {
+    font-family: 'Roboto Mono', monospace;
+    font-size: 10px;
+    letter-spacing: 0.22em;
+    color: var(--silver);
+    text-transform: uppercase;
+    opacity: 0;
+    margin-bottom: 32px;
+    animation: fadeUp 1.2s ease 0.3s forwards;
+  }
+
+  .hero-title {
+    font-size: clamp(72px, 10vw, 120px);
+    font-weight: 300;
+    line-height: 0.9;
+    letter-spacing: -0.02em;
+    color: var(--white);
+    margin-bottom: 48px;
+    opacity: 0;
+    animation: fadeUp 1.4s ease 0.5s forwards;
+  }
+
+  .hero-title em {
+    font-style: italic;
+    color: var(--pale);
+  }
+
+  .hero-sub {
+    font-size: 15px;
+    font-family: 'Roboto Mono', monospace;
+    letter-spacing: 0.08em;
+    color: var(--silver);
+    opacity: 0;
+    animation: fadeUp 1.4s ease 0.8s forwards;
+    max-width: 480px;
+    line-height: 1.7;
+  }
+
+  .hero-rq {
+    margin-top: 64px;
+    padding: 32px 0;
+    border-top: 1px solid rgba(143, 168, 200, 0.15);
+    opacity: 0;
+    animation: fadeUp 1.4s ease 1.1s forwards;
+  }
+
+  .hero-rq p {
+    font-size: 22px;
+    font-style: italic;
+    color: var(--pale);
+    line-height: 1.6;
+    font-weight: 300;
+  }
+
+  .scroll-hint {
+    position: absolute;
+    bottom: 40px;
+    left: 50%;
+    transform: translateX(-50%);
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 8px;
+    opacity: 0;
+    animation: fadeIn 2s ease 2s forwards;
+  }
+
+  .scroll-hint span {
+    font-family: 'Roboto Mono', monospace;
+    font-size: 9px;
+    letter-spacing: 0.2em;
+    color: var(--silver);
+    opacity: 0.4;
+    text-transform: uppercase;
+  }
+
+  .scroll-line {
+    width: 1px;
+    height: 40px;
+    background: linear-gradient(to bottom, var(--silver), transparent);
+    opacity: 0.3;
+    animation: scrollPulse 2s ease infinite;
+  }
+
+  .section-divider {
+    width: 100%;
+    height: 1px;
+    background: linear-gradient(to right, transparent, rgba(143, 168, 200, 0.2), transparent);
+    margin: 80px 0;
+  }
+
+  .section-label {
+    font-family: 'Roboto Mono', monospace;
+    font-size: 9px;
+    letter-spacing: 0.25em;
+    color: var(--silver);
+    text-transform: uppercase;
+    opacity: 0.45;
+    margin-bottom: 48px;
+    display: flex;
+    align-items: center;
+    gap: 16px;
+  }
+
+  .section-label::after {
+    content: '';
+    flex: 1;
+    height: 1px;
+    background: rgba(143, 168, 200, 0.15);
+  }
+
+  .section-title {
+    font-size: clamp(28px, 4vw, 42px);
+    font-weight: 300;
+    line-height: 1.2;
+    color: var(--white);
+    margin-bottom: 48px;
+    letter-spacing: -0.01em;
+  }
+
+  .section-title em {
+    font-style: italic;
+    color: var(--pale);
+  }
+
+  p {
+    font-size: 18px;
+    line-height: 1.9;
+    color: var(--light);
+    margin-bottom: 28px;
+    font-weight: 300;
+  }
+
+  blockquote {
+    margin: 56px 0;
+    padding: 0;
+    border: none;
+    background: none;
+    position: relative;
+  }
+
+  blockquote p {
+    font-size: clamp(22px, 2.8vw, 30px);
+    font-style: italic;
+    color: var(--pale);
+    margin-bottom: 16px;
+    line-height: 1.6;
+    font-weight: 300;
+  }
+
+  .pull {
+    font-size: clamp(22px, 3vw, 32px);
+    font-style: italic;
+    color: var(--pale);
+    line-height: 1.5;
+    margin: 64px 0;
+    padding: 0 0 0 32px;
+    border-left: 2px solid var(--accent-dim);
+    font-weight: 300;
+  }
+
+  .bibliography {
+    margin-top: 80px;
+    padding: 48px 0;
+    border-top: 1px solid rgba(143, 168, 200, 0.15);
+  }
+
+  .bibliography h3 {
+    font-family: 'Roboto Mono', monospace;
+    font-size: 10px;
+    letter-spacing: 0.22em;
+    color: var(--silver);
+    text-transform: uppercase;
+    opacity: 0.5;
+    margin-bottom: 40px;
+  }
+
+  .bib-item {
+    font-size: 15px;
+    line-height: 1.8;
+    color: var(--silver);
+    margin-bottom: 16px;
+    font-family: 'Roboto', sans-serif;
+    opacity: 0.75;
+    padding-left: 20px;
+    text-indent: -20px;
+  }
+
+  .bib-item em { font-style: italic; }
+
+  footer {
+    padding: 80px 40px;
+    text-align: center;
+    position: relative;
+    z-index: 2;
+  }
+
+  footer p {
+    font-family: 'Roboto Mono', monospace;
+    font-size: 10px;
+    letter-spacing: 0.15em;
+    color: var(--silver);
+    opacity: 0.3;
+    text-transform: uppercase;
+    margin-bottom: 0;
+  }
+
+  @keyframes fadeUp {
+    from { opacity: 0; transform: translateY(24px); }
+    to { opacity: 1; transform: translateY(0); }
+  }
+
+  @keyframes fadeIn {
+    from { opacity: 0; }
+    to { opacity: 1; }
+  }
+
+  @keyframes scrollPulse {
+    0%, 100% { opacity: 0.3; transform: scaleY(1); }
+    50% { opacity: 0.6; transform: scaleY(1.1); }
+  }
+
+  .reveal {
+    opacity: 0;
+    transform: translateY(32px);
+    transition: opacity 0.9s ease, transform 0.9s ease;
+  }
+
+  .reveal.visible {
+    opacity: 1;
+    transform: translateY(0);
+  }
+
+  .glow-text {
+    text-shadow:
+      0 0 30px rgba(74, 144, 217, 0.8),
+      0 0 60px rgba(74, 144, 217, 0.5),
+      0 0 100px rgba(74, 144, 217, 0.3),
+      0 0 180px rgba(74, 144, 217, 0.15),
+      0 0 280px rgba(74, 144, 217, 0.08);
+    position: relative;
+  }
+
+  .hero-glow-bg {
+    position: absolute;
+    width: 700px;
+    height: 400px;
+    left: -80px;
+    top: -80px;
+    background: radial-gradient(ellipse at 30% 50%, rgba(74, 144, 217, 0.18) 0%, rgba(30, 80, 160, 0.1) 35%, transparent 65%);
+    pointer-events: none;
+    filter: blur(40px);
+    z-index: -1;
+    animation: glowPulse 4s ease-in-out infinite;
+  }
+
+  @keyframes glowPulse {
+    0%, 100% { opacity: 0.8; transform: scale(1); }
+    50% { opacity: 1; transform: scale(1.05); }
+  }
+
+  .hero-title {
+    position: relative;
+  }
+
+  .hero-title::after {
+    content: '';
+    position: absolute;
+    top: 50%;
+    left: 0;
+    width: 70%;
+    height: 200%;
+    transform: translateY(-50%);
+    background: radial-gradient(ellipse 80% 70% at 25% 50%, rgba(74, 144, 217, 0.22) 0%, rgba(20, 60, 140, 0.1) 40%, transparent 70%);
+    filter: blur(30px);
+    z-index: -1;
+    pointer-events: none;
+  }
+
+  .section {
+    padding: 80px 0;
+  }
+
+  .section-num {
+    font-family: 'Roboto Mono', monospace;
+    font-size: 11px;
+    color: var(--accent);
+    opacity: 0.6;
+    letter-spacing: 0.1em;
+    display: block;
+    margin-bottom: 8px;
+  }
+</style>
+</head>
+<body>
+
+<canvas id="water-canvas"></canvas>
+<div class="cursor" id="cursor"></div>
+<div class="cursor-ring" id="cursor-ring"></div>
+<div class="cursor-ring-2" id="cursor-ring-2"></div>
+
+<div class="data-readout">
+  <span id="data-depth">depth: 0.00m</span>
+  <span>hydrophone <span class="active-glow">active</span></span>
+  <span>thames · cherwell</span>
+</div>
+
+<nav>
+  <span class="nav-title">Attunement</span>
+  <ul class="nav-links">
+    <li><a href="#introduction">Introduction</a></li>
+    <li><a href="#section1">I</a></li>
+    <li><a href="#section2">II</a></li>
+    <li><a href="#section3">III</a></li>
+    <li><a href="#section4">IV</a></li>
+    <li><a href="#conclusion">Conclusion</a></li>
+    <li><a href="#bibliography">Bibliography</a></li>
+  </ul>
+</nav>
+
+<div class="page">
+
+  <!-- HERO -->
+  <section class="hero" id="top">
+    <div>
+      <p class="hero-label">Critical Report · BA Graphic Communication Design</p>
+      <div style="position:relative; display:inline-block;">
+        <div class="hero-glow-bg"></div>
+        <h1 class="hero-title glow-text"><em>Attune&shy;ment</em></h1>
+      </div>
+      <p class="hero-sub">How can interactive data visualisation foster attentive, embodied engagement with water systems as living, relational environments?</p>
+      <div class="hero-rq">
+        <p>A sound-based interactive installation developed through creative computing, perception and environment, and embodied interaction design. Using hydrophone recordings of the Thames and Cherwell in Oxford.</p>
+      </div>
+    </div>
+    <div class="scroll-hint">
+      <span>Scroll</span>
+      <div class="scroll-line"></div>
+    </div>
+  </section>
+
+  <div class="section-divider"></div>
+
+  <!-- INTRODUCTION -->
+  <section class="section" id="introduction">
+    <div class="section-label">Introduction</div>
+    <div class="reveal">
+      <p>Water is essential and universal. Water is everywhere in contemporary environmental conversation, yet its representation is largely shaped by measurement and is often difficult to relate to. It appears in reports, monitoring systems and infographics, where it is translated into flow rates, quality indicators and quantitative outputs that prioritise legibility over experience. This is not a failure of information, it is a question of mediation. The question of how environmental data is translated and what that translation makes possible in the audience, is fundamentally a communication design problem.</p>
+    </div>
+    <div class="reveal">
+      <p>My research question addresses that problem through a specific context: river water systems. It asks how interactive data visualisation can foster attentive, embodied engagement with water systems as living, relational environments. The question is not whether water systems matter ecologically and socially, they are an essential part of life, but whether representing them primarily through quantitative data is enough to produce the kind of engaged, attentive understanding that meaningful relation to those systems requires. My critical report argues that it is not enough and that communication design, when grounded in embodied interaction and relational frameworks, offers a more meaningful alternative.</p>
+    </div>
+    <div class="reveal">
+      <p>The field my research question enters into is already active as well as being current to environmental issues we face today. Practitioners including Ursula Biemann, Superflux, Dorsey Bromwell Kaufmann and Adrianna Ladogana are producing work that repositions ecological data as experience rather than just information, using sound, interaction and speculative design to make environmental systems perceptible in ways that conventional visualisation cannot. Theorists including Astrida Neimanis, Tim Ingold, Salomé Voegelin and Paul Dourish provide the conceptual frameworks through which my practice can be understood and developed, frameworks that address how bodies relate to environments, how listening operates as a designed act of attention and how physical interaction produces meaning that representation alone cannot do. Within graphic communication design, these ideas matter because they reframe the discipline's core concern: how information is mediated and what that mediation produces in the audience, as something that can operate sensorially, relationally and ecologically.</p>
+    </div>
+    <div class="reveal">
+      <p>The practical project supporting my critical report is <em>Attunement</em>, a sound based interactive installation that uses hydrophone recordings of the Thames and Cherwell in Oxford to translate the acoustic complexity of living river systems into a designed interactive experience in which engagement is initiated only through direct physical contact with water. It is developed through the key elements of my practice: creative computing, perception and environment, and embodied interaction design.</p>
+    </div>
+    <div class="reveal">
+      <p>My critical report is structured into four main sections. The first examines how water is conventionally represented and questions why this produces distance rather than engagement, drawing on practitioners and theorists who are already repositioning ecological data within relational frameworks. The second establishes sound as a legitimate and theoretically grounded medium within communication design and data visualisation practice. The third addresses embodied interaction as a communication design methodology, arguing that meaningful engagement with environmental data requires physical and relational participation rather than a passive audience. The fourth section brings these arguments together through <em>Attunement</em>, analysing my project as a communication design practice that fosters attentive, embodied engagement with water systems as living environments. My critical report concludes by positioning these ideas within the broader implications for graphic communication design as a discipline capable of ecological practice. My critical report concludes by positioning these ideas within the broader implications for graphic communication design as a discipline capable of ecological practice and for creative computing as a practice that can work with natural systems rather than in opposition with them.</p>
+    </div>
+  </section>
+
+  <div class="section-divider"></div>
+
+  <!-- SECTION 1 -->
+  <section class="section" id="section1">
+    <div class="section-label">Section One</div>
+    <h2 class="section-title reveal">How Water is Represented: Data, Distance and the <em>Communication Design Problem</em></h2>
+
+    <div class="reveal">
+      <p>Water is most commonly encountered through the systems designed to measure and manage it. Monitoring technologies and environmental reports translate river systems into flow rates, temperature data and quality scores, outputs that serve regular and scientific functions but that engage with water primarily as just an object of study. Within communication design, the question this raises is not whether these representations are accurate or needed, but what they make possible in their audiences. When water is mediated exclusively through quantitative research, its relational complexity: ecological, social and tangible, remains imperceptible. A growing body of practice within ecological art, sound based installation and speculative design is working directly within this problem, producing work that repositions water not as a resource to be monitored but as a living, interconnected system to be encountered.</p>
+    </div>
+
+    <div class="reveal">
+      <p>Arianna Ladogana's <em>Tidal, Porous, and Fragmentary</em> (2025), installed at Fondazione Pino Pascali in Polignano a Mare, is a foundational reference point within this field. The work submerges four sculptural bodies, neither entirely human nor entirely machine, in tanks of "perpetual liquefaction" <cite>(Ladogana, 2025)</cite>, proposing that bodies are not isolated but exist in a condition of ongoing transformation and interdependence with the natural and material world around them. Through a hydrofeminist framework, Ladogana's work images the aquatic environment as "a primordial matrix from which life has expanded onto dry land" and as "an inexhaustible network of connections that challenges the dichotomy between human and non-human" <cite>(Ladogana, 2025)</cite>. Water here is not background or resource but an active agent of transformation, "a medium of relationship and contamination, an element that passes through bodies and makes them part of a shared biological, political and material history" <cite>(Ladogana, 2025)</cite>. The installation refuses the logic of separation between body, water and technology, presenting instead a vision of entanglement in which these are inseparably interwoven and a "part of a continuous exchange with other forms of existence" <cite>(Ladogana, 2025)</cite>. For my research question, <em>Tidal, Porous, and Fragmentary</em> is significant because it demonstrates that water can be the foundation of a communicative act, not just its subject matter. My project, <em>Attunement</em>, is built on the same idea.</p>
+    </div>
+
+    <div class="reveal">
+      <p>Superflux's <em>Nobody Told Me Rivers Dream</em> (2025), presented at the Design Museum's <em>More than Human: Making with the Living World</em>, extends this practice into speculative and computational design, positioning rivers as active systems of intelligence whose complexity transcends conventional data representation. The work positions three sculptural objects along the Thames, embedded with sensors and language models trained not only on scientific data but also on folklore and indigenous ecological wisdom. Rather than representing the river through data and information, <em>Nobody Told Me Rivers Dream</em> inverts the relationship between environment, technology and audience: "the environment itself prompts the AI, which in turn prompts humans" <cite>(Superflux, 2025)</cite>. This is an important communicative move within design practice, a move that repositions ecological data as relational and perceptual rather than extractive and informational. Superflux describes their ambition as "a more sensuous, embodied mode of perception, one that recognises intelligence as something not confined to human cognition but arising from relationships between humans and the more-than-human world" <cite>(Jain, cited in Superflux, 2025)</cite>. For my project's research question, <em>Nobody Told Me Rivers Dream</em> is significant because it demonstrates that designed interactive systems can foster ecological attunement by foregrounding perception, reciprocity and relation as well as recognising that "ecological intelligence is not something we observe from a distance: it is something we participate in, embody, and carry forward" <cite>(Jain, cited in Superflux, 2025)</cite>. <em>Attunement</em> works within the same communicative ambition, with its purpose being "to change the way people perceive the world, opening new ways of seeing, relating, and understanding our ecological entanglements" <cite>(Jain, cited in Superflux, 2025)</cite>, using hydrophone recordings and embodied interaction to invite the audience to engage in sustained, sensory attention to river systems that Superflux identifies as both urgent and designable.</p>
+    </div>
+
+    <div class="reveal">
+      <p>Ursula Biemann's <em>Acoustic Ocean</em> (2018), produced in collaboration with marine biologist Stefan Helmreich, uses hydrophone recordings and underwater footage to make the acoustic complexity of ocean systems perceptible through sound rather than data. Biemann mediates the ocean as an experience, allowing the audience to engage in the rhythms and textures of a living system that exists beyond normal human sensory perception. Within this field, <em>Acoustic Ocean</em> establishes that the medium through which water data is translated determines the nature of the engagement it produces. For my project <em>Attunement</em>, this is a key principle and my decision to use hydrophone recordings as the primary medium is not aesthetic but communicative, determining that the audience's engagement with the river data is sensory and embodied.</p>
+    </div>
+
+    <div class="reveal">
+      <p>Dorsey Bromwell Kaufmann's <em>Ripple Effect</em> (2023) extends this into interactive installation practice, translating water contamination data into sound waves and vibrations. The work consists of sound stations with speakers and water trays, where "water contamination levels are translated into sound waves" that generate ripple patterns in the water surface itself <cite>(Bromwell Kaufmann, 2023)</cite>. Water becomes both the subject of the data and the medium through which it is made perceptible, the interface and the message are the same thing. Kaufmann's work travels to communities that are next to industrial pollution and toxic release sites, sharing local contamination data with the people most affected by it. This is a communication design decision where <em>Ripple Effect</em> positions ecological data as something to be felt and heard within a community context rather than just read from a report. For <em>Attunement</em>, <em>Ripple Effect</em> is an important example, as both works use sound and physical interaction with water as the primary communicative system and both treat the audience not as a passive receiver of environmental information but as an active participant in an embodied encounter with the water data.</p>
+    </div>
+
+    <blockquote class="reveal">
+      <p>"Water is not background or resource but an active agent of transformation, a medium of relationship and contamination, an element that passes through bodies and makes them part of a shared biological, political and material history."</p>
+      <footer>Ladogana, 2025</footer>
+    </blockquote>
+
+    <div class="reveal">
+      <p>The theoretical framework that grounds this body of practice is best articulated by Astrida Neimanis in <em>Bodies of Water: Posthuman Feminist Phenomenology</em> (2017). Neimanis argues that "we are bodies of water", not metaphorically but ontologically, proposing that human bodies and water systems are materially entangled, porous to one another and always already in relation <cite>(Neimanis, 2017, p.2)</cite>. Central to Neimanis's argument is a critique of what geographer Jamie Linton calls "modern water", the Western understanding of water as separate from bodies and environments, made "placeless" and reducible to a "measurable quantity" <cite>(Linton, cited in Neimanis, 2017, p.19)</cite>. Neimanis argues that this understanding of water misrepresents the material relationship between bodies and water systems, a position that grounds my work <em>Attunement</em>, though she notes that it is not her intention to suggest that "modern water" can be, "or even should be, entirely undone" <cite>(Neimanis, 2017, p.21)</cite>. In her work, Neimanis states that water is "not simply something 'out there'" but "the stuff of human bodies, and never separate from our own incontestable materiality" <cite>(Neimanis, 2017, p.22)</cite>. For communication design, this matters because the medium through which water is represented shapes the relationship to water that becomes possible. When water is communicated only through quantitative data, it reinforces this idea of 'modern water', of water as something purely external and measurable, cutting off the relational and embodied understanding that Neimanis argues is both more accurate and more urgent.</p>
+    </div>
+
+    <div class="reveal">
+      <p>Catherine D'Ignazio and Lauren Klein develop a complementary argument in <em>Data Feminism</em> (2020), insisting that data practices must "value multiple forms of knowledge, including the knowledge that comes from people as living, feeling bodies in the world" <cite>(D'Ignazio and Klein, 2020)</cite>. Their fifth principle, embracing pluralism, holds that "the most complete knowledge comes from synthesising multiple perspectives, with priority given to local, Indigenous, and experiential ways of knowing" <cite>(D'Ignazio and Klein, 2020)</cite>. Therefore, when water systems are represented primarily through quantitative data, those decisions privilege scientific and 'modern' knowledge over sensory, situated and embodied forms of understanding, which are the forms of knowledge D'Ignazio and Klein argue are the most complete. Within communication design, this establishes that repositioning how water data is mediated is not only an experiential choice but also an ethical and political choice. A hydrophone used in my local river and translating those recordings of that specific water system into a designed sensory experience, is then an act of data collection that prioritises situated and embodied knowledge. This is the exact position from which my project <em>Attunement</em> is designed.</p>
+    </div>
+  </section>
+
+  <div class="section-divider"></div>
+
+  <!-- SECTION 2 -->
+  <section class="section" id="section2">
+    <div class="section-label">Section Two</div>
+    <h2 class="section-title reveal">Sound as <em>Communication Design Medium</em></h2>
+
+    <div class="reveal">
+      <p>Sound is not a secondary medium within communication design. It is a primary one that is capable of producing knowledge and creating attention and relational experience in ways that visual data representation cannot replicate. This section establishes sound as a legitimate and theoretically grounded and politically significant medium for ecological data communication, drawing on sound theory and neuroscience to argue that listening, when designed for, becomes a form of ecological knowledge. It positions <em>Attunement</em> within a field of practice that treats sound not as aesthetic accompaniment to data but as the communicative act itself.</p>
+    </div>
+
+    <div class="reveal">
+      <p>The distinction between hearing and listening is foundational to this argument. Pauline Oliveros, composer and originator of the Deep Listening practice, draws a clear line between the two: "to hear is the physical means that enables perception" while "to listen is to give attention to what is perceived both acoustically and psychologically" <cite>(Oliveros, 2005, p.xxii)</cite>. This distinction has direct implications for communication design. For those with hearing, the ear is constantly gathering and transmitting information, but as Oliveros makes clear, hearing and listening are not the same thing. Hearing is the physiological process through which sound reaches the brain, but listening is what happens when attention is brought to what is perceived, both acoustically and psychologically. Listening is an active, voluntary and culturally shaped practice. Most sound that we hear is processed and discarded without ever reaching our conscious awareness. Oliveros argues that "if you are too narrow in your awareness of sounds, you are likely to be disconnected from your environment" <cite>(Oliveros, 2005, p.xxiv)</cite>, a condition shaped by habit and the narrowing of attention to only what is deemed as immediately relevant. For my project <em>Attunement</em>, this is a communication design problem with a designed solution. My work does not ask the audience to just hear the river, it has designed the conditions under which they are encouraged to listen to it. The sound composition when presence is detected on the water surface is not a documentary recording of the river, but a designed encounter which is speculative and conceptual, that attempts to make perceptible what normally remains outside of our conscious attention.</p>
+    </div>
+
+    <div class="reveal">
+      <p>Oliveros developed Deep Listening as a practice of "learning to expand the perception of sounds to include the whole space/time continuum of sound, encountering the vastness and complexities as much as possible" <cite>(Oliveros, 2005, p.xxiii)</cite>. This expansion of perceptual attention is also an expansion of ecological connection: "such expansion means that one is connected to the whole of the environment and beyond" <cite>(Oliveros, 2005, p.xxiii)</cite>. Therefore, Deep Listening is not a passive practice but an active one, in which an audience's sustained attention to sound becomes a means of ecological attunement, of sensing one's relationship to the natural environment through the act of listening itself.</p>
+    </div>
+
+    <div class="reveal">
+      <p>The neuroscientific basis for sound as a knowledge producing medium helps to strengthen these claims. Daniel Levitin, in <em>This Is Your Brain on Music</em> (2006), demonstrates that sound engages emotional and memory systems within the brain in ways that other sensory inputs do not, producing forms of understanding that are embodied and affective rather than just purely cognitive. Nina Kraus, in <em>Of Sound Mind</em> (2021), develops these ideas into ecological and social contexts, showing through decades of auditory neuroscience research that the brain's response to sound is shaped by experience, attention and environment, that listening is a biological and cultural practice and that the sounds we pay attention to shape how we understand and relate to the world around us. In terms of communication design, these findings establish that sound is not simply a way for information to be transmitted but also a medium through which meaning is produced in the body of the listener. When <em>Attunement</em> uses hydrophone recordings to make river systems perceptible, it is not just illustrating data, it is producing a form of knowing that works through the audience's own auditory and embodied experience.</p>
+    </div>
+
+    <blockquote class="reveal">
+      <p>"Such expansion means that one is connected to the whole of the environment and beyond."</p>
+      <footer>Oliveros, 2005, p.xxiii</footer>
+    </blockquote>
+
+    <blockquote class="reveal">
+      <p>"A geography of sound has no maps; it produces no cartography but instead holds a knowledge of the world that lies in its invisible contingency."</p>
+      <footer>Voegelin, 2018, p.75</footer>
+    </blockquote>
+
+    <div class="reveal">
+      <p>Salomé Voegelin's <em>The Political Possibility of Sound</em> (2018) grounds these ideas in critical and political theory. Voegelin argues that "a geography of sound has no maps; it produces no cartography" but instead "holds a knowledge of the world that lies in its invisible contingency" <cite>(Voegelin, 2018, p.75)</cite>. Voegelin argues that while sound can be measured acoustically, the experience of listening transcends what measurement can capture. What sound communicates, the way it involves the audience within an environment, the knowledge it produces through encountering it rather than observation, cannot be reduced to data. As Voegelin writes, listening "does not find its actuality in a source but performs the interrogation of what that might be" <cite>(Voegelin, 2018, p.121)</cite>. For my research question, this is an important claim as fostering attentive, embodied engagement with water systems as living, relational environments requires a communicative medium that produces relation rather than just observation. When water is communicated through quantitative visual data, it is presented as measurable and certain, reproduced, as Neimanis argues, as 'modern water'. When water is communicated through sound, it resists that and instead "promotes an attitude of doubt in the complete, in the representation, in what we think we see as a persuasive whole" <cite>(Voegelin, 2018, p.121)</cite>. Sound does not present the river as data to be interpreted but instead it draws the audience into relation with it.</p>
+    </div>
+
+    <div class="reveal">
+      <p>Voegelin further argues that "my sound is part of other sounds and they are part of me: we inter-are, objects and subjects as things that define each other contingently" <cite>(Voegelin, 2018, p.119)</cite>. This concept of 'interbeing' through sound, the dissolution of a fixed boundary between the audience and the designed environment is directly parallel to Neimanis's posthuman feminist phenomenology and to the ontological position which <em>Attunement</em> operates. If bodies and water are materially entangled, as Neimanis (2017) argues, and if sound produces knowledge through encounter rather than observation, implicating the listener within an environment rather than positioning them outside it <cite>(Voegelin, 2018)</cite>, then sound is the medium through which that entanglement can be most directly experienced. In <em>Attunement</em>, the river is already present and audible as the no contact composition plays continuously, the river as it exists without human engagement. But it is physical contact initiated by the audience with water that deepens that encounter. Touch initiates a shift in the sonic environment, revealing layered complexity that was not previously perceptible. The river's acoustic world, made perceptible through the hydrophone, does not represent the river or give it a fixed identity, its purpose is to draw the audience into relation with it, a relation that begins in the body and deepens through listening.</p>
+    </div>
+
+    <div class="reveal">
+      <p>Within graphic communication design, the use of sound as a primary medium is both a communicative and ethical position. Like Biemann's <em>Acoustic Ocean</em> (2018) and Bromwell Kaufmann's <em>Ripple Effect</em> (2023), <em>Attunement</em> works within a field of practice that treats sound and physical interaction as legitimate and theoretically grounded forms of ecological data communication. D'Ignazio and Klein (2020) argue that the most complete knowledge comes from synthesising multiple perspectives, with priority given to experiential and embodied ways of knowing. In <em>Attunement</em>, my use of sound as a medium that produces knowledge through direct sensory encounter, operates within this principle. My work is designed for the active, attentive listening that Oliveros identifies as the condition of ecological connection, positioning the audience not as a reader of environmental information but as a participant in a living acoustic encounter. <em>Attunement</em> proposes that sound, as a medium within graphic communication design, can foster the attentive, embodied engagement with water systems as living, relational environments that my research question asks for.</p>
+    </div>
+  </section>
+
+  <div class="section-divider"></div>
+
+  <!-- SECTION 3 -->
+  <section class="section" id="section3">
+    <div class="section-label">Section Three</div>
+    <h2 class="section-title reveal">Embodied Interaction as <em>Communication Design Practice</em></h2>
+
+    <div class="reveal">
+      <p>This section establishes embodied interaction as the communicative method of <em>Attunement</em>, the idea that meaning is not produced through the representation of environmental data but through physical, relational engagement with it. Drawing on interaction design theory and ecological thinking, it positions this methodology within a field of practice that treats touch and presence not as interface systems but as the conditions under which genuine engagement with a living environment can become possible.</p>
+    </div>
+
+    <blockquote class="reveal">
+      <p>"You cannot separate the individual from the world in which that individual lives and acts."</p>
+      <footer>Dourish, 2001, p.18</footer>
+    </blockquote>
+
+    <div class="reveal">
+      <p>Paul Dourish's <em>Where the Action Is</em> (2001) provides the foundational interaction design framework for this argument. Dourish argues that tangible and social computing share a common basis in embodiment, but not understood as simply physical reality, instead as "a form of participative status" in which things are "embedded in the world, and the ways in which their reality depends on being embedded" <cite>(Dourish, 2001, p.18)</cite>. This is a core idea for communication design within my practice. It establishes that meaning is not produced by representing the world to an audience but by designing systems in which the audience participates in the world through physical engagement. Dourish argues directly against what he calls "naive cognitivism", the Cartesian separation of mind from body, of the individual from their environment, stating instead that "you cannot separate the individual from the world in which that individual lives and acts" <cite>(Dourish, 2001, p.18)</cite>. For <em>Attunement</em>, this is the theoretical grounding of every design decision that I have made. The body of water present in the exhibition space is collected directly from the Thames and Cherwell in Oxford, the same rivers recorded through the hydrophone. When the audience touches its surface, they are in direct physical contact with the water that is the subject, the medium and the data of the work simultaneously.</p>
+    </div>
+
+    <div class="reveal">
+      <p>Dourish further argues that "computation is fundamentally a representational medium, but as we attempt to expand the ways in which we interact with computation, we need to pay attention to the duality of representation and participation" <cite>(Dourish, 2001, p.20)</cite>. This duality is what <em>Attunement</em> navigates. The Arduino Nano and copper electrode are computational tools, but their function within the designed system is not representational, they don't display data about the river. They detect the presence of a human body in contact with water and in doing so initiate a participatory encounter with my work. The computation serves the embodied interaction rather than replacing it. This is the communicative logic that positions <em>Attunement</em> within the field of embodied interaction design that Dourish explores, a field that is not concerned with what information is conveyed but with what kind of engagement is made possible through the design of physical, relational systems.</p>
+    </div>
+
+    <blockquote class="reveal">
+      <p>"To perceive the landscape is therefore to carry out an act of remembrance."</p>
+      <footer>Ingold, 2000, p.189</footer>
+    </blockquote>
+
+    <div class="reveal">
+      <p>Tim Ingold's <em>The Perception of the Environment</em> (2000) deepens this framework from an anthropological and ecological perspective. Ingold presents what he calls "the dwelling perspective" <cite>(Ingold, 2000, p.185)</cite>, a way of understanding the environment not as a neutral backdrop to human activity but as something formed through the lived and attentive engagement of those who inhabit it. As Ingold argues, "to perceive the landscape is therefore to carry out an act of remembrance" <cite>(Ingold, 2000, p.189)</cite>, perception is not passive reception of information but an active and relational engagement with a living "environment that is itself pregnant with the past" <cite>(Ingold, 2000, p.189)</cite>. These ideas have had a direct impact on my design of <em>Attunement</em>. If attentive perception of a living environment is in itself a form of knowledge, produced through engagement rather than observation, then the role of communication design here is to create the conditions under which that engagement can become possible.</p>
+    </div>
+
+    <div class="reveal">
+      <p>Ingold's concept of the "taskscape" <cite>(Ingold, 2000, p.195)</cite> is also important in this discussion, it is the idea that an environment is not something we observe but something we are always already engaged within through activity. He argues that "what I hear is activity, even when its source cannot be seen" <cite>(Ingold, 2000, p.199)</cite>, positioning sound as the medium through which the living processes of an environment become perceptible. The hydrophone recordings that form the sonic material of <em>Attunement</em> work within these ideas, rather than abstracting the river into numerical or visual data, they translate its rhythms and movements into a sonic and embodied form, one that is experienced as activity and presence rather than as information to just be read. Therefore, because that material is encountered through physical contact with water rather than solely through a screen or speaker, the audience is not positioned as a listener observing the river from the outside but instead as an active participant attending to an environment they are a part of. This is what I understand Ingold means by dwelling, knowledge produced through attentive, embodied engagement with a living environment rather than through just its representation.</p>
+    </div>
+
+    <div class="reveal">
+      <p>Superflux's <em>Nobody Told Me Rivers Dream</em> (2025) demonstrates these ideas within contemporary design practice, designing for "a more sensuous, embodied mode of perception, one that recognises intelligence as something not confined to human cognition but arising from relationships between humans and the more-than-human world" <cite>(Jain, cited in Superflux, 2025)</cite>. The work inverts the conventional relationship between the environment, technology and the audience: "the environment itself prompts the AI, which in turn prompts humans" <cite>(Superflux, 2025)</cite>, positioning the river not as subject matter but as the active initiator of the communicative encounter. <em>Attunement</em> works within this same logic. The contact and no contact states of the designed system are structured around the principle that what the audience does determines what they perceive and how much they take away from my work. The sense that the system is alive to their presence, is exactly what creates attentiveness rather than passive reception.</p>
+    </div>
+
+    <div class="reveal">
+      <p>What my research question asks for can't be answered through representation alone. Fostering attentive, embodied engagement with water systems as living, relational environments requires designing the conditions under which that engagement becomes possible and as Dourish (2001), Ingold (2000) and Superflux (2025) each demonstrate from different positions within this field, those conditions are physical, participatory and relational. Meaning is produced through the audience's presence and perception deepens through 'dwelling'. The field of practice I enter into already shows that interactive systems can be designed to create exactly this kind of encounter and <em>Attunement</em> is built on that understanding.</p>
+    </div>
+  </section>
+
+  <div class="section-divider"></div>
+
+  <!-- SECTION 4 -->
+  <section class="section" id="section4">
+    <div class="section-label">Section Four</div>
+    <h2 class="section-title reveal"><em>Attunement</em> as Ecological Communication Design</h2>
+
+    <div class="reveal">
+      <p><em>Attunement</em> is the point at which the ideas developed across my critical report converge into a designed experience, one that is developed through the intersecting practices of creative computing, perception and environment and embodied interaction design. It is explored here as a communication design piece, through the question of how the system produces the conditions for attentive, embodied engagement with water systems as living, relational environments and how my work is in communication with the field it enters.</p>
+    </div>
+
+    <blockquote class="reveal">
+      <p>"We are bodies of water, not metaphorically but ontologically, proposing that human bodies and water systems are materially entangled, porous to one another and always already in relation."</p>
+      <footer>Neimanis, 2017, p.2</footer>
+    </blockquote>
+
+    <div class="reveal">
+      <p>My project begins with a decision that is communicative before there is any engagement. River water collected directly from the Thames and Cherwell in Oxford, the same rivers recorded through the hydrophone, is present in the exhibition space. When the audience touches its surface, they are in contact with the water that is simultaneously the subject, the medium and the data of the work. This is the point at which Neimanis's (2017) claim, that bodies and water are materially entangled and never fully separate, becomes a lived experience rather than a theoretical position. The audience does not just encounter a representation of the river, they also encounter the river itself and that encounter is designed to be felt before it is understood.</p>
+    </div>
+
+    <div class="reveal">
+      <p>The underwater recordings that shape that encounter are produced from using a hydrophone in the same water systems. Translated into two sound compositions in Ableton Live, the recordings do not document the river but instead give a communicative form to behaviours and movements that exist continuously but remain outside ordinary perceptual attention. As D'Ignazio and Klein (2020) argue, the conditions of data collection are never neutral and my decision to use sonic, situated knowledge is both a communicative and ethical position. The no contact composition plays continuously, the river as it exists without human engagement, ambient and present. It is the audience's physical contact with the water surface, detected by an Arduino Nano and a copper electrode, that initiates the shift. Layered, complex sound reveals itself and the river deepens in presence. TouchDesigner visuals respond alongside, moonlit footage of the water surface filmed at the same sites as the hydrophone recordings liquifies on contact, blob tracking activates and frames invert. The choice of moonlight here is intentional: its high contrast isolates the movement of the water surface but it also carries a symbolic layer as the moon is the force that governs tidal pull and moves water on a planetary scale.</p>
+    </div>
+
+    <div class="reveal">
+      <p>The conditionality of my work is the communicative logic of the entire system. My project cannot be experienced from a distance, it requires the audience to touch the water and to commit to the engagement before it begins. This design decision draws directly from Dourish's (2001) argument that meaning is produced not through representation but through embodied participation and it extends this argument into ecological territory. The act of touching river water in an exhibition space is not a neutral decision, it is a moment of relation, of "porosity" <cite>(Neimanis, 2017)</cite>, of the kind of material entanglement that Neimanis argues is always already true of bodies and water systems but that conventional data representation consistently closes off. <em>Attunement</em> designs that moment deliberately, making the ontological claim of my project felt rather than stated directly.</p>
+    </div>
+
+    <div class="reveal">
+      <p>The title <em>Attunement</em> names what my work is designed to produce within its audience. Drawing on Oliveros's (2005) practice of Deep Listening, attunement describes the state of expanded and sustained perceptual attention in which the audience becomes connected to "the whole of the environment and beyond" <cite>(Oliveros, 2005, p.xxiii)</cite>. It is active rather than passive, something that develops through the practice of listening rather than through information alone. The contact sound composition is speculative and interpretive in its construction, it is not a field recording but a designed sonic encounter that attempts to make perceptible what ordinarily remains outside of our conscious attention. Sound operates within my work as teacher, not in the sense of instruction but in the sense that Voegelin (2018) describes: as a medium that "promotes an attitude of doubt in the complete, in the representation, in what we think we see as a persuasive whole" <cite>(Voegelin, 2018, p.121)</cite>, opening the audience towards the complexity of the environment they are part of rather than confirming what they already know.</p>
+    </div>
+
+    <div class="reveal">
+      <p>Within graphic communication design, <em>Attunement</em> engages with what Rodgers, Preece and Sharp (2011) identify as user experience goals, the concern with how an audience experiences an interactive system "from their perspective" rather than in terms of just efficiency or productivity, designing for engagement that is "emotionally fulfilling" and "rewarding" <cite>(Rodgers, Preece and Sharp, 2011, p.19)</cite>. My project works within these goals but also extends them, the experience it is designed for is not only emotionally fulfilling, it is also relationally and ecologically significant, proposing that communication design is capable of producing a form of attention to the natural world that goes beyond what conventional data interfaces can normally reach. Touch, sound and water are not chosen for aesthetic reasons, they are the communicative forms through which the relationship between body and river can be most directly experienced, not just represented but felt.</p>
+    </div>
+
+    <div class="reveal">
+      <p>Positioned within the same field as Ladogana, Superflux, Biemann and Bromwell Kaufmann, <em>Attunement</em> works within a practice that understands ecological data as something to be encountered rather than just displayed. It proposes that interactive data visualisation, when grounded in embodied interaction, relational frameworks and sonic knowledge, can foster the attentive, embodied engagement with water systems as living, relational environments that my research question asks for. Within graphic communication design, <em>Attunement</em> proposes that meaningful engagement with water systems begins with touch and deepens into attunement and that designing the conditions for that experience is exactly what this field of practice is capable of.</p>
+    </div>
+  </section>
+
+  <div class="section-divider"></div>
+
+  <!-- CONCLUSION -->
+  <section class="section" id="conclusion">
+    <div class="section-label">Conclusion</div>
+    <h2 class="section-title reveal"><em>Conclusion</em></h2>
+
+    <div class="reveal">
+      <p>My critical report has argued that interactive data visualisation, when grounded in embodied interaction, sonic knowledge and relational frameworks, can foster attentive, embodied engagement with water systems as living, relational environments. It has done so by entering a field of practice that is already working within this proposition, one in which Ladogana, Superflux, Biemann and Bromwell Kaufmann are producing work that treats ecological data as experience rather than information and in which Neimanis, Ingold, Voegelin, Dourish and D'Ignazio provide the theoretical grounding through which that practice can be understood and developed within graphic communication design.</p>
+    </div>
+
+    <div class="reveal">
+      <p><em>Attunement</em> is the practical answer to the research question my critical report explores. Water collected from the Thames and Cherwell in Oxford is a part of the designed system and when the audience touches its surface, the sonic environment shifts, the river is made perceptible through hydrophone recordings and composed into two sound designs which become something that can be listened to, attended to and felt rather than just read. My project does not represent water systems but designs the conditions under which a different relationship to them can become possible, one that begins with the body and deepens through listening.</p>
+    </div>
+
+    <div class="reveal">
+      <p>What my critical report proposes is that graphic communication design carries a responsibility that extends beyond visual literacy and information transfer. As D'Ignazio and Klein (2020) argue, the conditions of data collection and translation are never neutral. As Neimanis (2017) insists, bodies and water are never truly separate. And as Oliveros (2005) demonstrates, deep listening is not passive but a practice through which connection to the environment is actively developed. <em>Attunement</em> brings these positions together into a single designed encounter and proposes that the most meaningful engagement with water systems is not produced through data alone, but through the kind of attentive, embodied relation that only begins when you make contact with the river itself.</p>
+    </div>
+  </section>
+
+  <div class="section-divider"></div>
+
+  <!-- BIBLIOGRAPHY -->
+  <section class="bibliography reveal" id="bibliography">
+    <h3>Bibliography</h3>
+    <p class="bib-item">Biemann, U. (2018) <em>Acoustic Ocean.</em> Video essay. Haifa: Hecht Museum.</p>
+    <p class="bib-item">Bromwell Kaufmann, D. (2023) <em>Ripple Effect.</em> Interactive installation.</p>
+    <p class="bib-item">D'Ignazio, C. and Klein, L.F. (2020) <em>Data Feminism.</em> Cambridge, MA: MIT Press.</p>
+    <p class="bib-item">Dourish, P. (2001) <em>Where the Action Is: The Foundations of Embodied Interaction.</em> Cambridge, MA: MIT Press.</p>
+    <p class="bib-item">Ingold, T. (2000) <em>The Perception of the Environment: Essays on Livelihood, Dwelling and Skill.</em> London: Routledge.</p>
+    <p class="bib-item">Kraus, N. (2021) <em>Of Sound Mind: How Our Brain Constructs a Meaningful Sonic World.</em> Cambridge, MA: MIT Press.</p>
+    <p class="bib-item">Ladogana, A. (2025) <em>Tidal, Porous, and Fragmentary.</em> Installation. Fondazione Pino Pascali, Polignano a Mare.</p>
+    <p class="bib-item">Levitin, D. (2006) <em>This Is Your Brain on Music.</em> New York: Dutton.</p>
+    <p class="bib-item">Neimanis, A. (2017) <em>Bodies of Water: Posthuman Feminist Phenomenology.</em> London: Bloomsbury.</p>
+    <p class="bib-item">Oliveros, P. (2005) <em>Deep Listening: A Composer's Sound Practice.</em> New York: iUniverse.</p>
+    <p class="bib-item">Rodgers, Y., Preece, J. and Sharp, H. (2011) <em>Interaction Design: Beyond Human-Computer Interaction.</em> 3rd edn. Chichester: Wiley.</p>
+    <p class="bib-item">Superflux (2025) <em>Nobody Told Me Rivers Dream.</em> Installation. London: Design Museum.</p>
+    <p class="bib-item">Voegelin, S. (2018) <em>The Political Possibility of Sound: Fragments of Listening.</em> New York: Bloomsbury.</p>
+    <p class="bib-item">Yuk Hui (2019) <em>Recursivity and Contingency.</em> London: Rowman and Littlefield.</p>
+  </section>
+
+</div>
+
+<footer>
+  <p>Attunement &nbsp;·&nbsp; BA Graphic Communication Design &nbsp;·&nbsp; Georgie Smith</p>
+</footer>
+
+<script>
+  const cursor = document.getElementById('cursor');
+  const ring = document.getElementById('cursor-ring');
+  const ring2 = document.getElementById('cursor-ring-2');
+  const dataDepth = document.getElementById('data-depth');
+  let mouseX = 0, mouseY = 0;
+  let ringX = 0, ringY = 0;
+  let ring2X = 0, ring2Y = 0;
+
+  document.addEventListener('mousemove', e => {
+    mouseX = e.clientX;
+    mouseY = e.clientY;
+    cursor.style.left = mouseX + 'px';
+    cursor.style.top = mouseY + 'px';
+  });
+
+  window.addEventListener('scroll', () => {
+    const depth = (window.scrollY / (document.body.scrollHeight - window.innerHeight) * 12.4).toFixed(2);
+    if (dataDepth) dataDepth.textContent = `depth: ${depth}m`;
+  });
+
+  function animateRing() {
+    ringX += (mouseX - ringX) * 0.14;
+    ringY += (mouseY - ringY) * 0.14;
+    ring.style.left = ringX + 'px';
+    ring.style.top = ringY + 'px';
+
+    ring2X += (mouseX - ring2X) * 0.07;
+    ring2Y += (mouseY - ring2Y) * 0.07;
+    ring2.style.left = ring2X + 'px';
+    ring2.style.top = ring2Y + 'px';
+
+    requestAnimationFrame(animateRing);
+  }
+  animateRing();
+
+  const canvas = document.getElementById('water-canvas');
+  const ctx = canvas.getContext('2d');
+  let W, H, time = 0;
+
+  function resize() {
+    W = canvas.width = window.innerWidth;
+    H = canvas.height = window.innerHeight;
+  }
+  resize();
+  window.addEventListener('resize', resize);
+
+  const ripples = [];
+  let lastRippleTime = 0;
+  document.addEventListener('mousemove', e => {
+    const now = Date.now();
+    if (now - lastRippleTime > 60) {
+      lastRippleTime = now;
+      ripples.push({ x: e.clientX, y: e.clientY, r: 0, alpha: 0.7, speed: 2.5 + Math.random() * 2, maxR: 120 + Math.random() * 80 });
+      if (Math.random() < 0.3) {
+        ripples.push({ x: e.clientX + (Math.random()-0.5)*20, y: e.clientY + (Math.random()-0.5)*20, r: 0, alpha: 0.35, speed: 1.5 + Math.random(), maxR: 60 + Math.random() * 40 });
+      }
+    }
+  });
+
+  function drawWater() {
+    ctx.clearRect(0, 0, W, H);
+    time += 0.008;
+
+    for (let layer = 0; layer < 4; layer++) {
+      ctx.beginPath();
+      const freq = 0.003 + layer * 0.001;
+      const amp = 30 + layer * 15;
+      const speed = time * (0.3 + layer * 0.1);
+      const yBase = H * (0.2 + layer * 0.2);
+      const alpha = 0.03 + layer * 0.01;
+
+      ctx.moveTo(0, yBase);
+      for (let x = 0; x <= W; x += 4) {
+        const y = yBase +
+          Math.sin(x * freq + speed) * amp +
+          Math.sin(x * freq * 2.3 + speed * 1.3) * (amp * 0.4) +
+          Math.cos(x * freq * 0.7 + speed * 0.8) * (amp * 0.6);
+        ctx.lineTo(x, y);
+      }
+      ctx.lineTo(W, H);
+      ctx.lineTo(0, H);
+      ctx.closePath();
+
+      const gradient = ctx.createLinearGradient(0, yBase - amp, 0, H);
+      gradient.addColorStop(0, `rgba(10, 40, 90, ${alpha})`);
+      gradient.addColorStop(1, `rgba(6, 8, 16, ${alpha * 0.5})`);
+      ctx.fillStyle = gradient;
+      ctx.fill();
+    }
+
+    for (let i = 0; i < 6; i++) {
+      const y = (H * 0.1) + i * (H / 6) + Math.sin(time * 0.5 + i) * 20;
+      const x1 = W * 0.1 + Math.sin(time * 0.3 + i * 0.7) * W * 0.3;
+      const x2 = x1 + 80 + Math.sin(time * 0.6 + i) * 60;
+      const alpha = 0.04 + Math.sin(time * 0.8 + i * 1.2) * 0.03;
+
+      ctx.beginPath();
+      ctx.moveTo(x1, y);
+      ctx.lineTo(x2, y);
+      ctx.strokeStyle = `rgba(150, 200, 255, ${alpha})`;
+      ctx.lineWidth = 0.5 + Math.random() * 0.5;
+      ctx.stroke();
+    }
+
+    for (let i = ripples.length - 1; i >= 0; i--) {
+      const rp = ripples[i];
+      rp.r += rp.speed;
+      rp.alpha -= 0.008;
+      if (rp.alpha <= 0 || rp.r > rp.maxR) { ripples.splice(i, 1); continue; }
+
+      const progress = rp.r / rp.maxR;
+      const lineWidth = 1.5 * (1 - progress * 0.7);
+
+      ctx.beginPath();
+      ctx.arc(rp.x, rp.y, rp.r, 0, Math.PI * 2);
+      ctx.strokeStyle = `rgba(100, 170, 240, ${rp.alpha})`;
+      ctx.lineWidth = lineWidth;
+      ctx.stroke();
+
+      if (rp.r > 20) {
+        ctx.beginPath();
+        ctx.arc(rp.x, rp.y, rp.r * 0.6, 0, Math.PI * 2);
+        ctx.strokeStyle = `rgba(100, 170, 240, ${rp.alpha * 0.4})`;
+        ctx.lineWidth = lineWidth * 0.5;
+        ctx.stroke();
+      }
+    }
+
+    requestAnimationFrame(drawWater);
+  }
+  drawWater();
+
+  const reveals = document.querySelectorAll('.reveal');
+  const observer = new IntersectionObserver(entries => {
+    entries.forEach(entry => {
+      if (entry.isIntersecting) {
+        entry.target.classList.add('visible');
+      }
+    });
+  }, { threshold: 0.1, rootMargin: '0px 0px -40px 0px' });
+
+  reveals.forEach(el => observer.observe(el));
+</script>
+</body>
+</html>
